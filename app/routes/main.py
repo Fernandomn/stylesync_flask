@@ -1,11 +1,24 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
+from pydantic import ValidationError
+
+from app.models.user import LoginPayload
 
 main_bp = Blueprint("main_bp", __name__)
 
 
 @main_bp.route("/login", methods=["POST"])
 def login():
-    return jsonify({"message": "Login."})
+    try:
+        raw_data = request.get_json()
+        user_data = LoginPayload(**raw_data)
+
+    except ValidationError as e:
+        return jsonify({"error": e.errors()}), 422
+
+    except Exception as e:
+        return jsonify({"error": "Erro durante a requisição do dado"}), 500
+
+    return jsonify({"message": f"Realizar login do usuário {user_data.username}."}), 200
 
 
 @main_bp.route("/")
