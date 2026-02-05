@@ -13,12 +13,16 @@ def login():
         user_data = LoginPayload(**raw_data)
 
     except ValidationError as e:
-        return jsonify({"error": e.errors()}), 422
+        return jsonify({"error": e.errors()}), 400
 
     except Exception as e:
         return jsonify({"error": "Erro durante a requisição do dado"}), 500
 
-    return jsonify({"message": f"Realizar login do usuário {user_data.username}."}), 200
+    if user_data.username == "admin" and user_data.password == "123":        
+        return jsonify({"message": f"Login bem sucedido!"}), 200
+    else:
+        return jsonify({"message": f"Credenciais invalidas"}), 200
+        # return jsonify({"message": f"Realizar login do usuário {user_data.model_dump_json()}."}), 200
 
 
 @main_bp.route("/")
