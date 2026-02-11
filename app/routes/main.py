@@ -1,6 +1,8 @@
+from bson import ObjectId
 from flask import Blueprint, jsonify, request
 from pydantic import ValidationError
 
+from app import db
 from app.models.user import LoginPayload
 
 main_bp = Blueprint("main_bp", __name__)
@@ -18,7 +20,7 @@ def login():
     except Exception as e:
         return jsonify({"error": "Erro durante a requisição do dado"}), 500
 
-    if user_data.username == "admin" and user_data.password == "123":        
+    if user_data.username == "admin" and user_data.password == "123":
         return jsonify({"message": f"Login bem sucedido!"}), 200
     else:
         return jsonify({"message": f"Credenciais invalidas"}), 200
@@ -32,14 +34,31 @@ def index():
 
 @main_bp.route("/products", methods=["GET"])
 def get_products():
-    return jsonify({"message": "Essa é a rota dos produtos."})
+    products_cursor = db.products.find({})
+    products_list = []
+
+    for product in products_cursor:
+        product["_id"] = str(product["_id"])
+        products_list.append(product)
+    return jsonify(products_list)
 
 
-@main_bp.route("/products/<int:product_id>", methods=["GET"])
+@main_bp.route("/products/<string:product_id>", methods=["GET"])
 def get_product_by_id(product_id):
-    return jsonify(
-        {"message": f"Essa é a rota de visualização do produto com ID {product_id}."}
-    )
+
+    try:
+        oid = ObjectId(str(product_id))
+    except Exception as ex:
+        return jsonify(
+            {"error": f"Erro ao transformar {product_id} em ObjectId: {ex}."}
+        )
+
+    product = db.products.find_one({"_id": oid})
+    if product:
+        product["_id"] = str(product["_id"])
+        return jsonify(product)
+    else:
+        return jsonify({"error": f"Erro: Produto {product_id} não encontrado"})
 
 
 @main_bp.route("/products", methods=["POST"])
@@ -47,14 +66,14 @@ def create_product():
     return jsonify({"message": "Essa é a rota de criação do produto."})
 
 
-@main_bp.route("/products/<int:product_id>", methods=["PUT"])
+@main_bp.route("/products/<string:product_id>", methods=["PUT"])
 def update_product(product_id):
     return jsonify(
         {"message": f"Essa é a rota de atualização do produto com ID {product_id}."}
     )
 
 
-@main_bp.route("/products/<int:product_id>", methods=["DELETE"])
+@main_bp.route("/products/<string:product_id>", methods=["DELETE"])
 def delete_product(product_id):
     return jsonify(
         {"message": f"Essa é a rota de exclusão do produto com ID {product_id}."}
