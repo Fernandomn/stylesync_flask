@@ -3,6 +3,7 @@ from flask import Blueprint, jsonify, request
 from pydantic import ValidationError
 
 from app import db
+from app.models.products import ProductDBModel
 from app.models.user import LoginPayload
 
 main_bp = Blueprint("main_bp", __name__)
@@ -32,14 +33,18 @@ def index():
     return jsonify({"message": "Bem vindo ao StyleSync!"})
 
 
-@main_bp.route("/products", methods=["GET"])
+@main_bp.route("/products", methods=["GET"], strict_slashes=False)
 def get_products():
     products_cursor = db.products.find({})
-    products_list = []
+    products_list = [
+        ProductDBModel(**product).model_dump(by_alias=True, exclude_none=True)
+        for product in products_cursor
+    ]
 
-    for product in products_cursor:
-        product["_id"] = str(product["_id"])
-        products_list.append(product)
+    # for product in products_cursor:
+    #     product["_id"] = str(product["_id"])
+    #     products_list.append(product)
+
     return jsonify(products_list)
 
 
@@ -55,8 +60,12 @@ def get_product_by_id(product_id):
 
     product = db.products.find_one({"_id": oid})
     if product:
-        product["_id"] = str(product["_id"])
-        return jsonify(product)
+        # product["_id"] = str(product["_id"])
+        product_model = ProductDBModel(**product).model_dump(
+            by_alias=True, exclude_none=True
+        )
+
+        return jsonify(product_model)
     else:
         return jsonify({"error": f"Erro: Produto {product_id} não encontrado"})
 
