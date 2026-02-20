@@ -6,7 +6,8 @@ from flask import Blueprint, current_app, jsonify, request
 from pydantic import ValidationError
 
 from app import db
-from app.models.products import ProductDBModel
+from app.decorators import token_required
+from app.models.products import Product, ProductDBModel
 from app.models.user import LoginPayload
 
 main_bp = Blueprint("main_bp", __name__)
@@ -34,7 +35,7 @@ def login():
             current_app.config["SECRET_KEY"],
             algorithm="HS256",
         )
-        
+
         print(token)
 
         return jsonify({"access_token": token}), 200
@@ -79,9 +80,24 @@ def get_product_by_id(product_id):
         return jsonify({"error": f"Erro: Produto {product_id} não encontrado"})
 
 
-@main_bp.route("/products", methods=["POST"])
-def create_product():
-    return jsonify({"message": "Essa é a rota de criação do produto."})
+@main_bp.route("/products", methods=["POST"], strict_slashes=False)
+@token_required
+def create_product(token):
+    try:
+        product = Product(**request.get_json())
+    except ValidationError as e:
+        return jsonify({"error": e.errors()}), 400
+
+    result = db.products.insert_one(product.model_dump())
+    return (
+        jsonify(
+            {
+                "message": f"O produto foi criado corretamente!",
+                "id": str(result.inserted_id),
+            }
+        ),
+        201,
+    )
 
 
 @main_bp.route("/products/<string:product_id>", methods=["PUT"])
