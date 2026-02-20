@@ -7,7 +7,7 @@ AUTH_CONST = "Authorization"
 
 
 def token_required(f):
-    @wraps
+    @wraps(f)
     def decorated(*args, **kwargs):
         token = None
 
