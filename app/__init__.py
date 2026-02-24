@@ -16,9 +16,11 @@ def create_app():
         print(f"Erro ao realizar a conexão com o Bando de Dados: {ex}")
 
     from .routes.category_routes import category_bp
+    from .routes.user_routes import user_bp
     from .routes.main import main_bp
 
-    app.register_blueprint(main_bp)
     app.register_blueprint(category_bp)
+    app.register_blueprint(user_bp)
+    app.register_blueprint(main_bp)
 
     return app
