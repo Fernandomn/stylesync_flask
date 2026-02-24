@@ -124,10 +124,20 @@ def update_product(token, product_id):
 
 
 @main_bp.route("/products/<string:product_id>", methods=["DELETE"])
-def delete_product(product_id):
-    return jsonify(
-        {"message": f"Essa é a rota de exclusão do produto com ID {product_id}."}
-    )
+@token_required
+def delete_product(token, product_id):
+
+    try:
+        oid = ObjectId(product_id)
+    except ValidationError as e:
+        return jsonify({"error": f"ID do produto inválido: {e.errors()}"}), 400
+
+    delete_product = db.products.delete_one({"_id": oid})
+
+    if delete_product.deleted_count == 0:
+        return jsonify({"error": "Produto não encontrado"}), 404
+
+    return "", 204
 
 
 @main_bp.route("/sales/upload", methods=["POST"])
