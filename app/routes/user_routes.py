@@ -1,4 +1,5 @@
 from bson import ObjectId
+from bson.errors import InvalidId
 from flask import Blueprint, jsonify, request
 from pydantic import ValidationError
 
@@ -11,7 +12,7 @@ user_bp = Blueprint("user", __name__, url_prefix="/users")
 
 @user_bp.route("/", methods=["GET"], strict_slashes=False)
 @token_required
-def get_users():
+def get_users(token_payload):
     users_cursor = db.users.find({}, {"password": 0})
     users_list = []
 
@@ -26,14 +27,14 @@ def get_users():
 
 @user_bp.route("/", methods=["POST"], strict_slashes=False)
 @token_required
-def create_user(token):
+def create_user(token_payload):
 
     try:
-        product = UserCreate(**request.get_json())
+        user_data = UserCreate(**request.get_json())
     except ValidationError as e:
         return jsonify({"error": e.errors()}), 400
 
-    result = db.users.insert_one(product.model_dump(by_alias=True, exclude_none=True))
+    result = db.users.insert_one(user_data.model_dump(by_alias=True, exclude_none=True))
 
     return (
         jsonify(
@@ -46,13 +47,13 @@ def create_user(token):
     )
 
 
-@user_bp.route("/<str:user_id>", methods=["DELETE"], strict_slashes=False)
+@user_bp.route("/<string:user_id>", methods=["DELETE"], strict_slashes=False)
 @token_required
-def delete_user(token, user_id):
+def delete_user(token_payload, user_id):
     try:
         oid = ObjectId(user_id)
-    except ValidationError as e:
-        return jsonify({"error": e.errors()}), 400
+    except InvalidId:
+        return jsonify({"error": f"ID de usuário inválido: {user_id}"}), 400
 
     deleted_user = db.users.delete_one({"_id": oid})
 
@@ -61,5 +62,5 @@ def delete_user(token, user_id):
 
     return (
         jsonify({"message": f"Usuário excluido com sucesso: {user_id}"}),
-        204,
+        200,
     )

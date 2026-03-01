@@ -17,7 +17,7 @@ def token_required(f):
             try:
                 token = auth_header.split(" ")[1]
             except IndexError:
-                return jsonify({"message": "Token Mal formado"})
+                return jsonify({"message": "Token Mal formado"}), 401
         if not token:
             return jsonify({"error": "Token não encontrado"}), 401
 
