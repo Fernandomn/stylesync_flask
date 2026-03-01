@@ -1,3 +1,5 @@
+import csv
+import io
 from datetime import datetime, timedelta, timezone
 
 import jwt
@@ -8,6 +10,7 @@ from pydantic import ValidationError
 from app import db
 from app.decorators import token_required
 from app.models.products import Product, ProductDBModel, UpdateProduct
+from app.models.sale import Sale
 from app.models.user import LoginPayload
 
 main_bp = Blueprint("main_bp", __name__)
@@ -132,14 +135,56 @@ def delete_product(token, product_id):
     except ValidationError as e:
         return jsonify({"error": f"ID do produto inválido: {e.errors()}"}), 400
 
-    delete_product = db.products.delete_one({"_id": oid})
+    delete_result = db.products.delete_one({"_id": oid})
 
-    if delete_product.deleted_count == 0:
+    if delete_result.deleted_count == 0:
         return jsonify({"error": "Produto não encontrado"}), 404
 
     return "", 204
 
 
 @main_bp.route("/sales/upload", methods=["POST"])
-def upload_sales():
+@token_required
+def upload_sales(token):
+    if "file" not in request.files:
+        return jsonify({"error": "Nenhum arquivo foi enviado"}), 400
+
+    file = request.files["file"]
+
+    if file.filename == "":
+        return jsonify({"error": "Nenhum arquivo selecionado"}), 400
+
+    if file and file.filename.endswith(".csv"):
+        csv_stream = io.StringIO(file.stream.read().decode("UTF-8"), newline=None)
+        csv_reader = csv.DictReader(csv_stream)
+
+        sales_to_insert = []
+        errors = []
+
+        for row_num, row in enumerate(csv_reader, 1):
+            try:
+                sale_data = Sale(**row)
+
+                sales_to_insert.append(sale_data.model_dump())
+            except ValidationError as e:
+                errors.append(f"Linha {row_num} com dados inválidos")
+            except Exception:
+                errors.append(f"Linha {row_num} com erro inesperado nos dados")
+
+        if sales_to_insert:
+            try:
+                db.sales.insert_many(sales_to_insert)
+            except Exception as e:
+                return jsonify({"error": f"{e}"}), 500
+            return (
+                jsonify(
+                    {
+                        "message": "Upload realizado com sucesso",
+                        "vendas_importadas": len(sales_to_insert),
+                        "erros_encontrados": errors,
+                    }
+                ),
+                200,
+            )
+
     return jsonify({"message": f"Essa é a rota do upload do arquivo de vendas."})
