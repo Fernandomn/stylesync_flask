@@ -195,7 +195,7 @@ def delete_product(token, product_id):
 # ----------------------VENDAS------------------------
 
 
-@main_bp.route("/vendas/upload", methods=["GET"])
+@main_bp.route("/sales/upload", methods=["GET"])
 def upload_sales_page():
     if "jwt_token" not in session:
         return redirect(url_for("main_bp.login"))
